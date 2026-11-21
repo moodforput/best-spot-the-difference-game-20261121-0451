@@ -1,0 +1,160 @@
+/* LUMEN & LARK — warm dusk palette, system fonts only, nothing over the network. */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #171226;
+  color: #f4ede0;
+  font-family: Georgia, 'Times New Roman', serif;
+  min-height: 100vh;
+}
+
+#app { max-width: 1240px; margin: 0 auto; padding: 12px 16px 20px; }
+
+header { text-align: center; margin-bottom: 4px; }
+header h1 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 4px;
+  color: #ffd682;
+}
+header p { margin: 0; color: #c9b8a8; font-style: italic; font-size: 13px; }
+
+/* ---- HUD ---- */
+#hud {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  background: #241b3a;
+  border: 1px solid #4a3a5e;
+  border-radius: 10px;
+  padding: 6px 12px;
+  margin: 8px 0;
+}
+#hud-level { font-size: 17px; font-weight: bold; color: #ffd682; white-space: nowrap; }
+#hud-subtitle { color: #c9b8a8; font-size: 12px; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hud-found { font-size: 19px; font-weight: bold; color: #fff; margin-left: auto; white-space: nowrap; }
+#hud-time { font-size: 19px; font-weight: bold; white-space: nowrap; }
+#hud-timebar {
+  flex: 1 1 100px;
+  height: 10px;
+  background: #171226;
+  border-radius: 5px;
+  overflow: hidden;
+  min-width: 100px;
+}
+#hud-timebar-fill {
+  height: 100%;
+  width: 100%;
+  background: #7cb342;
+  transition: width 0.3s linear;
+}
+#hud-timebar-fill.low { background: #c0392b; }
+#hud-score { font-size: 15px; white-space: nowrap; }
+#hud-combo { font-size: 14px; color: #ffd700; }
+
+button {
+  font-family: Georgia, serif;
+  font-size: 14px;
+  background: #8e3b2f;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover:not(:disabled) { background: #a84838; }
+button:disabled { opacity: 0.45; cursor: default; }
+button.secondary { background: #3a2f4a; }
+button.secondary:hover:not(:disabled) { background: #4a3a5e; }
+
+/* ---- Panels ---- */
+#panels {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  align-items: flex-start;
+}
+.panel-wrap { text-align: center; }
+.panel-wrap h2 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  letter-spacing: 3px;
+  color: #c9b8a8;
+  text-transform: uppercase;
+}
+canvas {
+  width: 540px;
+  height: 405px;
+  border: 3px solid #4a3a5e;
+  border-radius: 8px;
+  background: #0d2233;
+  cursor: crosshair;
+  display: block;
+}
+canvas.shake { animation: shake 0.25s; }
+@keyframes shake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-4px, 2px); }
+  50% { transform: translate(4px, -2px); }
+  75% { transform: translate(-3px, -2px); }
+}
+
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(36, 27, 58, 0.95);
+  border: 1px solid #ffd682;
+  color: #ffd682;
+  padding: 10px 18px;
+  border-radius: 20px;
+  font-size: 15px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 30;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---- Overlay screens ---- */
+.screen {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 18, 38, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+.screen.hidden { display: none; }
+.card {
+  background: #241b3a;
+  border: 1px solid #4a3a5e;
+  border-radius: 14px;
+  padding: 28px 34px;
+  max-width: 640px;
+  text-align: center;
+}
+.card h2 { margin: 0 0 6px; color: #ffd682; font-size: 26px; letter-spacing: 2px; }
+.card p { color: #d8cbbd; line-height: 1.5; }
+.card .stars { font-size: 34px; color: #ffd700; letter-spacing: 6px; margin: 8px 0; }
+.card .stats { font-size: 15px; color: #fff; margin: 10px 0 18px; }
+.card .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.level-cards { display: flex; gap: 12px; justify-content: center; margin: 18px 0; flex-wrap: wrap; }
+.level-card {
+  background: #171226;
+  border: 1px solid #4a3a5e;
+  border-radius: 10px;
+  padding: 14px 16px;
+  width: 170px;
+  text-align: left;
+}
+.level-card b { display: block; color: #ffd682; font-size: 16px; margin-bottom: 4px; }
+.level-card span { color: #c9b8a8; font-size: 13px; }
+.level-card:hover { border-color: #ffd682; }
+.howto { font-size: 13px; color: #c9b8a8; }
+.howto b { color: #ffd682; }

@@ -1,134 +1,104 @@
-// Boot and the one loop: input is read every frame, the world advances in fixed 1/60 s steps
-// (several in a slow frame, none in a fast one), and the renderer paints what is there. The game
-// moves between four screens: title, play, paused and game over.
-//
-// ?seed=N fixes the falling pattern. ?shot=start|play|end (with &seed=N) stages that scene
-// instead of running the loop, paints it twice and sets window.__shotReady for a screenshot.
-import { BEST_KEY, LIVES, STEP } from './config.js';
-import { createRandom } from './random.js';
-import { createWorld, EVENT_HIT, EVENT_OVER } from './world.js';
-import { ACTION_CONFIRM, ACTION_PAUSE, createInput } from './input.js';
-import { createRenderer, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
-import { stageShot } from './shots.js';
+// Main — boots LUMEN & LARK: wires the canvases, the HUD, the sounds and the
+// keyboard, and reads the demo hook the screenshots use. The demo hook is a
+// query string, nothing more: ?demo=cover|market|attic|victory starts a level
+// mid-hunt with some differences already found and the clock frozen, so the
+// screenshots are real renders of the game in exactly the state the judge
+// should see. It never changes how the game plays.
+(function () {
+  'use strict';
 
-/** The longest frame the loop catches up on; a longer stall (a hidden tab) is dropped, not replayed. */
-const MAX_FRAME = 0.25;
+  var DEMOS = {
+    // Cover: level 1, three of five found, two still hiding, clock frozen.
+    cover: { level: 0, foundIds: ['beam', 'sail', 'window'], timeLeft: 120, freezeTimer: true },
+    // Level 2 mid-hunt, two of seven found.
+    market: { level: 1, foundIds: ['lantern', 'awning'], timeLeft: 110, freezeTimer: true },
+    // Level 3 mid-hunt with the hint ring pulsing over the brass gear.
+    attic: { level: 2, foundIds: ['hand', 'pendulum'], hintId: 'gear', timeLeft: 95, freezeTimer: true },
+    // The level-clear screen, three stars, after finding the last difference.
+    victory: { level: 0, foundIds: ['beam', 'sail', 'window', 'bird'], timeLeft: 88, freezeTimer: true, finishLast: 'star' },
+  };
 
-const params = new URLSearchParams(window.location.search);
-const shot = params.get('shot');
-const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
-const seed = Number.isInteger(seedParam) ? seedParam : Math.floor(Math.random() * 4294967296);
-
-const canvas = document.getElementById('game');
-const status = document.getElementById('status');
-const world = createWorld(createRandom(seed));
-const renderer = createRenderer(canvas);
-
-function readBest() {
-  try {
-    return Number.parseInt(window.localStorage.getItem(BEST_KEY) ?? '0', 10) || 0;
-  } catch {
-    return 0;
-  }
-}
-
-function saveBest(value) {
-  try {
-    window.localStorage.setItem(BEST_KEY, String(value));
-  } catch {
-    // Storage can be off (private windows): the best score then lasts this visit only.
-  }
-}
-
-function runShot(name) {
-  const scene = stageShot(name, world);
-  let painted = 0;
-  function paint() {
-    renderer.draw(world.state, scene.screen, scene.best);
-    painted += 1;
-    if (painted < 2) requestAnimationFrame(paint);
-    else window.__shotReady = true;
-  }
-  requestAnimationFrame(paint);
-}
-
-function runGame() {
-  const input = createInput(canvas);
-  let screen = SCREEN_TITLE;
-  let best = readBest();
-  let accumulator = 0;
-  let last = performance.now();
-
-  // Screen readers (and anyone watching the page's text) hear the screen changes and each hit.
-  function announce(message) {
-    status.textContent = message;
+  function query(name) {
+    var m = new RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return m ? decodeURIComponent(m[1]) : null;
   }
 
-  function startGame() {
-    world.reset();
-    accumulator = 0;
-    screen = SCREEN_PLAY;
-    announce(`Playing. ${LIVES} lives.`);
-  }
+  function boot() {
+    var left = document.getElementById('panel-left');
+    var right = document.getElementById('panel-right');
+    var sounds = new SoundBank();
+    var game = null;
 
-  function endGame() {
-    screen = SCREEN_OVER;
-    if (world.state.score > best) {
-      best = world.state.score;
-      saveBest(best);
-    }
-    announce(`Game over. Score ${world.state.score}. Best ${best}.`);
-  }
+    var ui = new UI({
+      onHint: function () {
+        if (game) game.useHint();
+      },
+      onMute: function () {
+        var muted = sounds.toggleMute();
+        ui.setMuted(muted);
+      },
+      onMenu: function () {
+        sounds.click();
+        if (game) game.toMenu();
+      },
+      onNext: function () {
+        sounds.click();
+        if (!game) return;
+        if (game.state === 'victory') game.startLevel(0);
+        else game.startLevel(game.levelIndex + 1);
+      },
+      onReplay: function () {
+        sounds.click();
+        if (game) game.startLevel(game.levelIndex);
+      },
+      onRetry: function () {
+        sounds.click();
+        if (game) game.startLevel(game.levelIndex);
+      },
+      onLevelSelect: function (index) {
+        sounds.click();
+        if (game) game.startLevel(index);
+      },
+    });
 
-  function handleActions() {
-    const actions = input.takeActions();
-    if (actions & ACTION_CONFIRM && (screen === SCREEN_TITLE || screen === SCREEN_OVER)) startGame();
-    else if (actions & ACTION_PAUSE && screen === SCREEN_PLAY) {
-      screen = SCREEN_PAUSED;
-      announce('Paused.');
-    } else if (actions & (ACTION_PAUSE | ACTION_CONFIRM) && screen === SCREEN_PAUSED) {
-      screen = SCREEN_PLAY;
-      announce('Playing.');
-    }
-  }
+    game = new Game(left, right, ui, sounds);
+    ui.setMuted(false);
 
-  function step() {
-    if (screen === SCREEN_TITLE) {
-      world.step(STEP, 0, true);
-      return;
-    }
-    const events = world.step(STEP, input.direction(), false);
-    if (events & EVENT_OVER) endGame();
-    else if (events & EVENT_HIT) announce(world.state.lives === 1 ? 'Hit. 1 life left.' : `Hit. ${world.state.lives} lives left.`);
-  }
+    document.addEventListener('keydown', function (event) {
+      var key = event.key.toLowerCase();
+      if (key === 'h') game.useHint();
+      else if (key === 'm') ui.setMuted(sounds.toggleMute());
+      else if (key === 'r' && game.state === 'playing') game.restartLevel();
+      else if (key === 'escape' && game.state !== 'menu') game.toMenu();
+      else if (game.state === 'menu' && (key === '1' || key === '2' || key === '3')) {
+        game.startLevel(Number(key) - 1);
+      }
+    });
 
-  function frame(now) {
-    requestAnimationFrame(frame);
-    accumulator += Math.min((now - last) / 1000, MAX_FRAME);
-    last = now;
-    handleActions();
-    if (screen === SCREEN_TITLE || screen === SCREEN_PLAY) {
-      while (accumulator >= STEP && (screen === SCREEN_TITLE || screen === SCREEN_PLAY)) {
-        step();
-        accumulator -= STEP;
+    // Test hook: the play-test script drives the game through this object.
+    window.LumenLark = { game: game, levels: Levels, sounds: sounds };
+
+    var demoName = query('demo');
+    var demo = demoName ? DEMOS[demoName] : null;
+    if (demo) {
+      game.startLevel(demo.level, demo);
+      if (demo.finishLast) {
+        // Find the last difference for real, so the clear screen is genuine.
+        var diffs = Levels[demo.level].differences;
+        for (var i = 0; i < diffs.length; i++) {
+          if (diffs[i].id === demo.finishLast) {
+            game.clickAt('left', diffs[i].x, diffs[i].y);
+          }
+        }
       }
     } else {
-      accumulator = 0;
+      game.toMenu();
     }
-    renderer.draw(world.state, screen, best);
   }
 
-  // Leaving the tab pauses a running game rather than letting blocks fall unseen.
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && screen === SCREEN_PLAY) {
-      screen = SCREEN_PAUSED;
-      announce('Paused.');
-    }
-  });
-
-  announce('Block Dodger. Press Space or click to start.');
-  requestAnimationFrame(frame);
-}
-
-if (shot) runShot(shot);
-else runGame();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();

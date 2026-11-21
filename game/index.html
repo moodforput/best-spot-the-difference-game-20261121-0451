@@ -3,17 +3,92 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
-<style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-</style>
+<title>LUMEN &amp; LARK — A Spot-the-Difference Hunt</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
-<p id="status" role="status" aria-live="polite"></p>
-<script type="module" src="./src/main.js"></script>
+<div id="app">
+  <header>
+    <h1>LUMEN &amp; LARK</h1>
+    <p>A spot-the-difference hunt in three hand-painted scenes</p>
+  </header>
+
+  <div id="screen-game">
+    <div id="hud">
+      <span id="hud-level">Level 1 — Harbor Dusk</span>
+      <span id="hud-subtitle"></span>
+      <span id="hud-found">Found 0 / 5</span>
+      <span id="hud-time">150s</span>
+      <div id="hud-timebar"><div id="hud-timebar-fill"></div></div>
+      <span id="hud-score">Score 0</span>
+      <span id="hud-combo"></span>
+      <button id="hint-btn" type="button">Hint (3)</button>
+      <button id="mute-btn" type="button" class="secondary">Sound: on</button>
+      <button id="menu-btn" type="button" class="secondary">Menu</button>
+    </div>
+    <div id="panels">
+      <div class="panel-wrap">
+        <h2>Left — the original</h2>
+        <canvas id="panel-left" width="1120" height="840" aria-label="Left picture: the original scene"></canvas>
+      </div>
+      <div class="panel-wrap">
+        <h2>Right — changed</h2>
+        <canvas id="panel-right" width="1120" height="840" aria-label="Right picture: the changed scene"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<div id="screen-menu" class="screen">
+  <div class="card">
+    <h2>LUMEN &amp; LARK</h2>
+    <p>Two pictures hang side by side. They look the same — they are not.
+       Lark the lamplighter hid the changes; Lumen the cat swears she saw them.
+       Click every difference on either picture to ring it in gold.</p>
+    <div class="level-cards">
+      <button type="button" class="level-card" data-level="0"><b>1 · Harbor Dusk</b><span>5 differences · 150 seconds</span></button>
+      <button type="button" class="level-card" data-level="1"><b>2 · The Night Market</b><span>7 differences · 150 seconds</span></button>
+      <button type="button" class="level-card" data-level="2"><b>3 · Clockmaker’s Attic</b><span>10 differences · 120 seconds</span></button>
+    </div>
+    <p class="howto">Click a difference on either panel. A wrong click costs 3 seconds.
+       <b>H</b> hints, <b>M</b> mutes, <b>R</b> restarts the level, <b>1–3</b> picks a level.</p>
+    <p id="best-score"></p>
+  </div>
+</div>
+
+<div id="screen-clear" class="screen hidden">
+  <div class="card">
+    <h2 id="clear-title">Level cleared!</h2>
+    <div id="clear-stars" class="stars">★★★</div>
+    <p id="clear-stats" class="stats"></p>
+    <div class="row">
+      <button id="clear-next" type="button">Next level →</button>
+      <button id="clear-replay" type="button" class="secondary">Replay level</button>
+      <button id="clear-menu" type="button" class="secondary">Menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-over" class="screen hidden">
+  <div class="card">
+    <h2>Out of time</h2>
+    <p id="over-stats" class="stats"></p>
+    <p>The differences are still out there, laughing quietly. Try again?</p>
+    <div class="row">
+      <button id="over-retry" type="button">Retry level</button>
+      <button id="over-menu" type="button" class="secondary">Menu</button>
+    </div>
+  </div>
+</div>
+
+<script src="src/audio.js"></script>
+<script src="src/scenes.js"></script>
+<script src="src/levels.js"></script>
+<script src="src/game.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/main.js"></script>
 </body>
 </html>
